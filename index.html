@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SamPetro — Сборка ПК (Параллакс + Плавные переходы + Эффекты)</title>
+<style>
+    :root{
+        --accent:#4CAF50;
+        --accent-2:#2ecc71;
+        --danger:#e74c3c;
+        --bg-1:#081229;
+        --bg-2:#0f2740;
+        --glass: rgba(255,255,255,0.06);
+        --text: #f3f6fb;
+        --muted: #b7c2d6;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, "Helvetica Neue", Arial;}
+    html,body{height:100%}
+    body{
+        min-height:100vh;
+        color:var(--text);
+        background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:18px;
+        transition: background 1s ease;
+    }
+
+    .container{
+        width:100%;
+        max-width:1100px;
+        display:flex;
+        flex-direction:column;
+        gap:18px;
+    }
+
+    header{
+        display:flex;
+        gap:12px;
+        align-items:center;
+        padding:14px 18px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,0.04);
+        box-shadow: 0 8px 30px rgba(2,6,23,0.55);
+        backdrop-filter: blur(8px);
+    }
+
+    .logo-icon{width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:white;box-shadow:0 8px 24px rgba(76,175,80,0.16)}
+    header h1{font-size:1.35rem;color:var(--accent)}
+    header p{color:var(--muted);font-size:0.9rem}
+    .high-score{margin-left:auto;color:#f6da6e;font-weight:700}
+
+    .game-container{display:flex;gap:16px;align-items:flex-start}
+    @media (max-width:880px){ .game-container{flex-direction:column} }
+
+    .game-area{flex:3;min-height:460px;border-radius:12px;overflow:hidden;position:relative;padding:16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 40px rgba(0,0,0,0.45)}
+
+    /* Parallax layers */
+    .parallax{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+    .layer{position:absolute;top:0;left:0;width:220%;height:130%;background-repeat:repeat-x;background-position:0 bottom;transform:translateZ(0)}
+    .layer-back{background-image: radial-gradient(ellipse at 10% 10%, rgba(255,255,255,0.06) 1px, transparent 1px), radial-gradient(ellipse at 80% 30%, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(180deg, rgba(2,10,30,0.9), rgba(4,20,40,0.8)); animation:move-back 60s linear infinite}
+    .layer-mid{background-image: linear-gradient(180deg, rgba(255,255,255,0) 40%, rgba(0,0,0,0.25) 100%), radial-gradient(circle at 20% 80%, rgba(30,40,60,0.9) 0 10%, transparent 10%), radial-gradient(circle at 45% 82%, rgba(20,30,50,0.9) 0 10%, transparent 10%), radial-gradient(circle at 70% 84%, rgba(18,26,44,0.9) 0 10%, transparent 10%); bottom:-10%; animation:move-mid 30s linear infinite}
+    .layer-front{background-image: linear-gradient( to right, rgba(0,0,0,0.0) 0 10%, rgba(0,0,0,0.12) 10% 12%, rgba(0,0,0,0.0) 12% 25%), linear-gradient(180deg, rgba(20,30,42,0.9), rgba(12,18,28,0.95)); bottom:0; animation:move-front 12s linear infinite}
+    @keyframes move-back { from{transform:translateX(0);} to{transform:translateX(-50%);} }
+    @keyframes move-mid  { from{transform:translateX(0);} to{transform:translateX(-40%);} }
+    @keyframes move-front{ from{transform:translateX(0);} to{transform:translateX(-30%);} }
+
+    .game-screen{position:relative;height:360px;margin:0 auto;width:100%;max-width:920px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.35));box-shadow:inset 0 30px 120px rgba(0,0,0,0.65), 0 12px 40px rgba(0,0,0,0.6);z-index:2;display:block}
+
+    .ground{position:absolute;left:0;right:0;bottom:0;height:22px;background:linear-gradient(90deg,#546a7a,#5f7f92);z-index:6;box-shadow:0 -4px 10px rgba(0,0,0,0.6) inset}
+
+    /* character with base glow */
+    .character{
+        position:absolute;
+        bottom:20px;
+        left:60px;
+        width:54px;height:78px;border-radius:10px 10px 6px 6px;
+        background:linear-gradient(180deg,#3aa0ff,#2477b9);
+        box-shadow:0 12px 30px rgba(0,0,0,0.55), 0 0 18px rgba(58,160,255,0.12);
+        z-index:20;transition:transform 0.28s cubic-bezier(.2,.9,.2,1), box-shadow 0.4s ease;
+        display:flex;align-items:flex-start;justify-content:center;
+    }
+    .character::before{content:'';position:absolute;top:-16px;left:10px;width:34px;height:20px;border-radius:6px;background:linear-gradient(180deg,#ff7b7b,#e04b4b)}
+    .character::after{content:'';position:absolute;top:12px;right:-12px;width:16px;height:28px;background:#2980b9;border-radius:5px 0 0 5px}
+
+    .character.jumping{animation:smooth-jump 480ms cubic-bezier(.2,.9,.2,1)}
+    @keyframes smooth-jump {0%{transform:translateY(0) scale(1)}50%{transform:translateY(-140px) scale(1.02)}100%{transform:translateY(0) scale(1)}}
+
+    /* power glow when collecting */
+    .character.powerup{box-shadow:0 0 40px 15px rgba(0,255,217,0.6), 0 0 80px 30px rgba(0,255,255,0.25); background: linear-gradient(180deg,#00ffe0,#007aff); transition: all 0.5s ease-out}
+
+    /* jump trail (color via --trail-color) */
+    .jump-trail{position:absolute;width:54px;height:78px;border-radius:10px 10px 6px 6px;pointer-events:none;filter:blur(8px);opacity:0.8;z-index:5;animation:trail-fade .5s ease-out forwards;background:linear-gradient(180deg,var(--trail-color, rgba(0,255,255,0.6)), transparent)}
+    @keyframes trail-fade{0%{transform:scale(1) translate(0,0);opacity:0.9}100%{transform:scale(1.2) translate(0,30px);opacity:0}}
+
+    /* obstacles & components */
+    .obstacle{position:absolute;bottom:20px;width:38px;height:60px;border-radius:6px;background:linear-gradient(180deg,var(--danger),#c03a38);box-shadow:0 10px 22px rgba(0,0,0,0.5);z-index:18;transition:transform 0.2s ease}
+    .component{position:absolute;bottom:30px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:white;z-index:18;box-shadow:0 10px 26px rgba(0,0,0,0.5);transition:transform 160ms ease, opacity 200ms}
+    .component.cpu{background:linear-gradient(180deg,#9b59b6,#7a3a96)}
+    .component.gpu{background:linear-gradient(180deg,#e67e22,#c76a14)}
+    .component.ram{background:linear-gradient(180deg,#3498db,#2179b3)}
+    .component.psu{background:linear-gradient(180deg,#e74c3c,#c83b33)}
+    .component.hdd{background:linear-gradient(180deg,#1abc9c,#138f7b)}
+    .component.mb{background:linear-gradient(180deg,#f1c40f,#d1a70f);color:#1f2b3a}
+
+    .info-panel{flex:1;min-width:260px;background:var(--glass);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(8px);box-shadow:0 10px 40px rgba(0,0,0,0.45);display:flex;flex-direction:column;gap:12px;z-index:10}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .stat{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;font-weight:600}
+    .components-collected{background:rgba(255,255,255,0.02);padding:12px;border-radius:8px}
+    .components-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;justify-content:center}
+    .component-item{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;box-shadow:0 6px 18px rgba(0,0,0,0.4)}
+    .component-item.missing{opacity:.28;transform:scale(.93)}
+    .component-item.collected{animation:compPulse .6s}
+    @keyframes compPulse{0%{transform:scale(.9)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+
+    .controls{display:flex;gap:10px;justify-content:center;margin-top:14px}
+    .btn{padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:white;box-shadow:0 8px 30px rgba(76,175,80,0.15);position:relative;overflow:hidden;transition:transform .22s ease,box-shadow .22s}
+    .btn:hover{transform:translateY(-3px);box-shadow:0 18px 50px rgba(76,175,80,0.16)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;background:linear-gradient(135deg,#6a6f77,#5d6370)}
+
+    .modal{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(2,6,18,0.6);z-index:120}
+    .modal .modal-content{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));padding:20px;border-radius:12px;max-width:520px;width:92%;text-align:center;border:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(6px)}
+
+    .pc-build{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+    .pc-slot{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;min-height:82px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .pc-slot.missing{border:1px dashed rgba(231,76,60,0.12);animation:shake .9s ease-in-out}
+    @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+
+    .notification{position:fixed;right:16px;bottom:16px;background:linear-gradient(90deg,var(--accent),var(--accent-2));padding:10px 14px;border-radius:10px;color:white;box-shadow:0 8px 30px rgba(0,0,0,0.4);transform:translateY(60px);opacity:0;transition:all .35s}
+    .notification.show{transform:translateY(0);opacity:1}
+
+    .progress-bar{height:10px;width:100%;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin-top:8px}
+    .progress{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#8fe07b);transition:width .45s cubic-bezier(.2,.9,.2,1)}
+
+    /* particles (subtle) */
+    .particles{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0.08}
+    .particle{position:absolute;width:6px;height:6px;border-radius:50%;background:linear-gradient(180deg,white, rgba(255,255,255,0.2));animation:particleFloat 4s ease-in-out infinite}
+    @keyframes particleFloat{0%{transform:translateY(0);opacity:0}50%{opacity:1}100%{transform:translateY(-120px);opacity:0}}
+
+    /* absorb particle */
+    .absorb-particle{position:absolute;width:40px;height:40px;border-radius:50%;pointer-events:none;z-index:60;animation:absorbParticle .6s ease-out forwards}
+    @keyframes absorbParticle{0%{opacity:1;transform:scale(.2)}50%{opacity:.8;transform:scale(1.5);filter:blur(2px)}100%{opacity:0;transform:scale(2.5);filter:blur(6px)}}
+
+    /* sparks */
+    .spark{position:absolute;width:6px;height:6px;border-radius:50%;pointer-events:none;opacity:0.9;z-index:200;animation:spark-fly .5s ease-out forwards}
+    @keyframes spark-fly{0%{transform:scale(1) translate(0,0);opacity:1}100%{transform:scale(.5) translate(var(--tx), var(--ty));opacity:0}}
+
+    /* energy wave */
+    .energy-wave{position:absolute;width:40px;height:40px;border:2px solid #00ffe0;border-radius:50%;pointer-events:none;opacity:.8;z-index:150;transform:translate(-50%,-50%) scale(0);animation:wave-expand .6s ease-out forwards;filter:drop-shadow(0 0 10px #00fff7)}
+    @keyframes wave-expand{0%{transform:translate(-50%,-50%) scale(.2);opacity:1}70%{opacity:.6}100%{transform:translate(-50%,-50%) scale(4);opacity:0}}
+
+    .game-screen.fade-out{animation:fadeOut .7s forwards}
+    @keyframes fadeOut{from{opacity:1;transform:scale(1)}to{opacity:.15;transform:scale(.98)}}
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="logo-icon">🔧</div>
+        <div>
+            <h1>SamPetro - Сборка ПК</h1>
+            <p>Параллакс, плавные переходы и живые эффекты — бери комплектующие на земле!</p>
+        </div>
+        <div class="high-score">Рекорд: <span id="highScore">0</span></div>
+    </header>
+
+    <div class="game-container">
+        <div class="game-area">
+            <div class="game-screen" id="gameScreen" aria-label="Игровой экран">
+                <div class="parallax" id="parallax">
+                    <div class="layer layer-back" id="layerBack"></div>
+                    <div class="layer layer-mid" id="layerMid"></div>
+                    <div class="layer layer-front" id="layerFront"></div>
+                </div>
+
+                <div class="particles" id="particles"></div>
+                <div class="ground"></div>
+                <div class="character" id="character" aria-hidden="true"></div>
+            </div>
+
+            <div class="controls" style="margin-top:12px">
+                <button class="btn" id="jumpBtn">Прыжок (ПРОБЕЛ)</button>
+                <button class="btn" id="startBtn">Начать игру</button>
+                <button class="btn" id="downloadBtn" title="Скачать HTML (сохранить игру)">Download HTML</button>
+            </div>
+
+            <div class="instructions" style="margin-top:8px">Управление: <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">ПРОБЕЛ</span> — прыжок, <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">Тап</span> — на моб.</div>
+        </div>
+
+        <div class="info-panel" aria-live="polite">
+            <div class="stats">
+                <div class="stat"><div style="font-size:.82rem;color:var(--muted)">Уровень</div><div id="level" style="font-size:1.05rem">1</div></div>
+                <div class="stat"><div style="font-size:.82rem;color:var(--muted)">Очки</div><div id="score" style="font-size:1.05rem">0</div></div>
+                <div class="stat"><div style="font-size:.82rem;color:var(--muted)">Собрано</div><div id="collected" style="font-size:1.05rem">0/6</div></div>
+                <div class="stat"><div style="font-size:.82rem;color:var(--muted)">Скорость</div><div id="speed" style="font-size:1.05rem">1x</div></div>
+            </div>
+
+            <div class="components-collected">
+                <h3 style="margin:0;color:var(--muted);font-size:.95rem">Собранные комплектующие</h3>
+                <div class="progress-bar" aria-hidden="true"><div class="progress" id="progress"></div></div>
+                <div class="components-list" id="componentsList"></div>
+            </div>
+
+            <button class="btn" id="buildBtn" disabled>Собрать ПК</button>
+
+            <div style="margin-top:auto;display:flex;gap:8px;align-items:center;justify-content:center">
+                <div style="color:var(--muted);font-size:.85rem">Рекорд сохраняется в localStorage</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="startModal" style="display:flex">
+    <div class="modal-content">
+        <h2>Добро пожаловать в SamPetro!</h2>
+        <p>Прыгайте через препятствия и собирайте комплектующие. Компоненты собираются, когда вы стоите на земле.</p>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn" id="modalStartBtn">Начать игру</button>
+            <button class="btn" id="modalStartNoSound" title="Начать без музыки">Старт (без музыки)</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="buildModal">
+    <div class="modal-content">
+        <h2>Сборка ПК</h2>
+        <p>Используйте собранные комплектующие для сборки компьютера:</p>
+        <div class="pc-build" id="pcBuild"></div>
+        <div id="buildResult"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn" id="rebuildBtn">Собрать заново</button>
+            <button class="btn" id="continueBtn">Продолжить</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="gameOverModal">
+    <div class="modal-content">
+        <h2>Игра окончена!</h2>
+        <p>Ваш результат: <span id="finalScore">0</span> очков</p>
+        <p>Рекорд: <span id="finalHighScore">0</span> очков</p>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn" id="restartBtn">Играть снова</button>
+            <button class="btn" id="toMenuBtn">В меню</button>
+        </div>
+    </div>
+</div>
+
+<div class="notification" id="notification">Сообщение</div>
+
+<!-- Audio -->
+<audio id="bgMusic" loop preload="auto">
+    <source src="https://cdn.pixabay.com/download/audio/2022/02/23/audio_b865ae3ef6.mp3?filename=cyberpunk-ambient-111159.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfxJump" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_4dd0a5e284.mp3?filename=click-124472.mp3" type="audio/mpeg"></audio>
+<audio id="sfxCollect" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_35e2a6b2aa.mp3?filename=game-notification-110788.mp3" type="audio/mpeg"></audio>
+<audio id="sfxGameOver" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_6d2b2d4286.mp3?filename=electronic-fail-110790.mp3" type="audio/mpeg"></audio>
+<audio id="absorbSound" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2023/03/15/audio_9b6a23cb3a.mp3" type="audio/mpeg"></audio>
+
+<script>
+/* ================== Game state ================== */
+const gameState = {
+    isPlaying: false,
+    level: 1,
+    score: 0,
+    speed: 1,
+    components: { cpu:false, gpu:false, ram:false, psu:false, hdd:false, mb:false },
+    collectedCount: 0,
+    obstacles: [],
+    componentsOnScreen: [],
+    gameInterval: null,
+    obstacleInterval: null,
+    componentInterval: null,
+    highScore: Number(localStorage.getItem('highScore') || 0),
+    soundEnabled: true
+};
+
+const pcComponents = [
+    { id:'cpu', name:'Процессор', color:'cpu', shortName:'CPU' },
+    { id:'gpu', name:'Видеокарта', color:'gpu', shortName:'GPU' },
+    { id:'ram', name:'Оперативная память', color:'ram', shortName:'RAM' },
+    { id:'psu', name:'Блок питания', color:'psu', shortName:'PSU' },
+    { id:'hdd', name:'Жесткий диск', color:'hdd', shortName:'HDD' },
+    { id:'mb', name:'Материнская плата', color:'mb', shortName:'MB' }
+];
+
+/* DOM refs */
+const gameScreen = document.getElementById('gameScreen');
+const character = document.getElementById('character');
+const startBtn = document.getElementById('startBtn');
+const jumpBtn = document.getElementById('jumpBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const buildBtn = document.getElementById('buildBtn');
+const startModal = document.getElementById('startModal');
+const buildModal = document.getElementById('buildModal');
+const gameOverModal = document.getElementById('gameOverModal');
+const modalStartBtn = document.getElementById('modalStartBtn');
+const modalStartNoSound = document.getElementById('modalStartNoSound');
+const rebuildBtn = document.getElementById('rebuildBtn');
+const continueBtn = document.getElementById('continueBtn');
+const restartBtn = document.getElementById('restartBtn');
+const toMenuBtn = document.getElementById('toMenuBtn');
+const notification = document.getElementById('notification');
+const highScoreElement = document.getElementById('highScore');
+const finalScoreElement = document.getElementById('finalScore');
+const finalHighScoreElement = document.getElementById('finalHighScore');
+const componentsListEl = document.getElementById('componentsList');
+const levelEl = document.getElementById('level');
+const scoreEl = document.getElementById('score');
+const collectedEl = document.getElementById('collected');
+const speedEl = document.getElementById('speed');
+const progressEl = document.getElementById('progress');
+const pcBuildEl = document.getElementById('pcBuild');
+const buildResultEl = document.getElementById('buildResult');
+
+const layerBack = document.getElementById('layerBack');
+const layerMid  = document.getElementById('layerMid');
+const layerFront = document.getElementById('layerFront');
+
+const bgMusic = document.getElementById('bgMusic');
+const sfxJump = document.getElementById('sfxJump');
+const sfxCollect = document.getElementById('sfxCollect');
+const sfxGameOver = document.getElementById('sfxGameOver');
+const absorbSound = document.getElementById('absorbSound');
+
+/* trail colors by collectedCount */
+const trailColors = ["#00ffcc","#00aaff","#9d00ff","#ff0077","#ffd500"];
+let collectedCount = 0;
+
+/* ========== init ========== */
+document.addEventListener('DOMContentLoaded', () => {
+    highScoreElement.textContent = gameState.highScore;
+    updateComponentsList();
+    initializeBuildModal();
+    createParticles(20);
+
+    modalStartBtn.addEventListener('click', () => { gameState.soundEnabled = true; startGame(); startModal.style.display='none'; });
+    modalStartNoSound.addEventListener('click', () => { gameState.soundEnabled = false; startGame(); startModal.style.display='none'; });
+    startBtn.addEventListener('click', startGame);
+    jumpBtn.addEventListener('click', () => { if (gameState.isPlaying) jump(); });
+    buildBtn.addEventListener('click', showBuildModal);
+    rebuildBtn.addEventListener('click', restartGame);
+    continueBtn.addEventListener('click', () => { buildModal.style.display='none'; nextLevel(); });
+    restartBtn.addEventListener('click', () => { gameOverModal.style.display='none'; startGame(); });
+    toMenuBtn.addEventListener('click', () => { gameOverModal.style.display='none'; startModal.style.display='flex'; });
+
+    downloadBtn.addEventListener('click', downloadHTML);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (gameState.isPlaying) jump();
+        }
+        if (e.key === 'n') nextLevel();
+    });
+
+    gameScreen.addEventListener('touchstart', () => { if (gameState.isPlaying) jump(); });
+
+    updateUI();
+});
+
+/* ========== Game functions ========== */
+function startGame() {
+    startModal.style.display='none';
+    gameOverModal.style.display='none';
+    buildModal.style.display='none';
+
+    gameState.isPlaying = true;
+    startBtn.disabled = true;
+
+    gameState.score = 0;
+    gameState.collectedCount = 0;
+    collectedCount = 0;
+    gameState.components = { cpu:false, gpu:false, ram:false, psu:false, hdd:false, mb:false };
+    gameState.obstacles = [];
+    gameState.componentsOnScreen = [];
+
+    clearGameScreen();
+
+    gameState.gameInterval = setInterval(updateGame, 20);
+    gameState.obstacleInterval = setInterval(createObstacle, Math.max(900, 1800 / gameState.speed));
+    gameState.componentInterval = setInterval(createComponent, Math.max(1100, 3000 / gameState.speed));
+
+    updateUI();
+    updateComponentsList();
+    updateParallax();
+    updateBackgroundByLevel();
+
+    buildBtn.disabled = true;
+
+    if (gameState.soundEnabled) {
+        try { bgMusic.volume = 0.28; bgMusic.currentTime = 0; bgMusic.play(); } catch(e){}
+    } else { try { bgMusic.pause(); bgMusic.currentTime = 0; } catch(e){} }
+
+    showNotification('Игра началась! Удачи!');
+}
+
+/* jump */
+function jump() {
+    if (!character.classList.contains('jumping')) {
+        character.classList.add('jumping');
+        playSound('jump');
+        createJumpTrail(character.offsetLeft + 0, character.offsetTop + 0);
+        setTimeout(()=> character.classList.remove('jumping'), 500);
+    }
+}
+
+/* create obstacle */
+function createObstacle() {
+    if (!gameState.isPlaying) return;
+    const obstacle = document.createElement('div');
+    obstacle.className = 'obstacle';
+    const leftPos = gameScreen.clientWidth + 20 + Math.random()*120;
+    obstacle.style.left = leftPos + 'px';
+    gameScreen.appendChild(obstacle);
+    gameState.obstacles.push({ element:obstacle, x:leftPos, passed:false });
+}
+
+/* create component (avoid spawning right at obstacle) */
+function createComponent() {
+    if (!gameState.isPlaying) return;
+    const available = pcComponents.filter(c => !gameState.components[c.id]);
+    if (available.length === 0) return;
+
+    // ensure not spawning inside or too close to a recent obstacle
+    if (gameState.obstacles.length > 0) {
+        const lastObstacle = gameState.obstacles[gameState.obstacles.length - 1];
+        // if obstacle is close to spawn edge, skip this spawn
+        if (lastObstacle.x > gameScreen.clientWidth - 220) {
+            return;
+        }
+    }
+
+    // also ensure not overlapping existing component spawns (simple check)
+    for (let cp of gameState.componentsOnScreen) {
+        if (cp.x > gameScreen.clientWidth - 260) {
+            // recent component exists near spawn — skip to avoid overlap
+            return;
+        }
+    }
+
+    const random = available[Math.floor(Math.random()*available.length)];
+    const comp = document.createElement('div');
+    comp.className = `component ${random.color}`;
+    comp.id = random.id;
+    const leftPos = gameScreen.clientWidth + 20;
+    comp.style.left = leftPos + 'px';
+    comp.textContent = random.shortName;
+    gameScreen.appendChild(comp);
+
+    gameState.componentsOnScreen.push({ element: comp, x: leftPos, type: random.id, collected:false });
+}
+
+/* update engine */
+function updateGame() {
+    if (!gameState.isPlaying) return;
+
+    // obstacles movement
+    for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+        const obs = gameState.obstacles[i];
+        obs.x -= 5 * gameState.speed;
+        obs.element.style.left = obs.x + 'px';
+
+        const charX = character.offsetLeft;
+        const obsLeft = obs.x;
+        if (!obs.passed && obsLeft < charX + 40 && obsLeft > charX - 10) {
+            const isJump = character.classList.contains('jumping');
+            if (!isJump) {
+                // collision -> game over
+                gameOver();
+                return;
+            } else {
+                obs.passed = true;
+                gameState.score += 10;
+                updateUI();
+            }
+        }
+        if (obs.x < -120) {
+            if (obs.element.parentNode) obs.element.remove();
+            gameState.obstacles.splice(i,1);
+        }
+    }
+
+    // components movement & collect (collect only when on ground)
+    for (let i = gameState.componentsOnScreen.length - 1; i >= 0; i--) {
+        const c = gameState.componentsOnScreen[i];
+        c.x -= 5 * gameState.speed;
+        c.element.style.left = c.x + 'px';
+
+        const charX = character.offsetLeft;
+        const isJump = character.classList.contains('jumping');
+
+        // magnet horizontal tolerance
+        const magnetRange = 36; // px tolerance
+        const compCenterX = c.x + 23; // approx center (46px width)
+        const charCenterX = charX + 27;
+
+        // collect only when character is on ground (not jumping) and within magnet horizontal area
+        if (!c.collected && !isJump && Math.abs(compCenterX - charCenterX) <= magnetRange) {
+            // collect
+            c.collected = true;
+            gameState.components[c.type] = true;
+            gameState.collectedCount++;
+            collectedCount++;
+            gameState.score += 50;
+
+            // visual effects: sound, flash, attract, sparks, energy wave, powerup glow
+            playSound('collect'); // small collect sfx (we'll also play absorbSound)
+            flashEffect();
+            attractToCharacter(c.element);
+            createSparks(character.offsetLeft + 30, gameScreen.getBoundingClientRect().top + gameScreen.clientHeight - 120);
+            createEnergyWave(character.offsetLeft + 55, gameScreen.getBoundingClientRect().top + gameScreen.clientHeight - 120);
+            character.classList.add('powerup');
+            setTimeout(()=> character.classList.remove('powerup'), 700);
+
+            // mark and remove from state
+            if (c.element.parentNode) { /* removal handled in attractToCharacter after animation */ }
+            gameState.componentsOnScreen.splice(i,1);
+
+            updateUI();
+            updateComponentsList();
+            updateProgressBar();
+            showNotification(`Собран ${getComponentName(c.type)}!`);
+
+            if (gameState.collectedCount === pcComponents.length) {
+                showNotification('Все компоненты собраны! Можно собрать ПК.');
+                buildBtn.disabled = false;
+            }
+        }
+
+        if (c.x < -120) {
+            if (c.element.parentNode) c.element.remove();
+            gameState.componentsOnScreen.splice(i,1);
+        }
+    }
+}
+
+/* game over */
+function gameOver() {
+    gameState.isPlaying = false;
+    clearInterval(gameState.gameInterval);
+    clearInterval(gameState.obstacleInterval);
+    clearInterval(gameState.componentInterval);
+    startBtn.disabled = false;
+
+    if (gameState.soundEnabled) { try { bgMusic.pause(); sfxGameOver.currentTime=0; sfxGameOver.play(); } catch(e){} }
+
+    if (gameState.score > gameState.highScore) {
+        gameState.highScore = gameState.score;
+        localStorage.setItem('highScore', gameState.highScore);
+        highScoreElement.textContent = gameState.highScore;
+        showNotification('Новый рекорд!');
+    }
+
+    finalScoreElement.textContent = gameState.score;
+    finalHighScoreElement.textContent = gameState.highScore;
+    gameScreen.classList.add('fade-out');
+    setTimeout(()=> gameScreen.classList.remove('fade-out'), 900);
+    setTimeout(()=> gameOverModal.style.display = 'flex', 400);
+}
+
+/* build modal */
+function showBuildModal() {
+    if (!gameState.isPlaying) return;
+    gameState.isPlaying = false;
+    clearInterval(gameState.gameInterval);
+    clearInterval(gameState.obstacleInterval);
+    clearInterval(gameState.componentInterval);
+    buildModal.style.display = 'flex';
+    updateBuildModal();
+}
+
+/* update build modal */
+function updateBuildModal() {
+    pcBuildEl.innerHTML = '';
+    let missing = 0;
+    pcComponents.forEach(c => {
+        const slot = document.createElement('div');
+        slot.className = `pc-slot ${gameState.components[c.id] ? '' : 'missing'}`;
+        if (gameState.components[c.id]) {
+            slot.innerHTML = `<div class="component-item ${c.color}" style="width:48px;height:48px;border-radius:8px">${c.shortName}</div><div style="margin-top:8px">${c.name}</div>`;
+        } else {
+            slot.innerHTML = `<div style="font-size:2rem">❌</div><div style="margin-top:8px">${c.name}</div>`;
+            missing++;
+        }
+        pcBuildEl.appendChild(slot);
+    });
+
+    if (missing === 0) {
+        buildResultEl.innerHTML = `<p style="color:#4CAF50;margin-top:12px">Отлично! Все компоненты на месте! ПК собран полностью!</p>`;
+    } else {
+        buildResultEl.innerHTML = `<p style="color:#e74c3c;margin-top:12px">Не хватает ${missing} компонента(ов). ПК может не работать.</p>`;
+    }
+}
+
+/* restart from build */
+function restartGame() { buildModal.style.display='none'; startGame(); }
+function nextLevel() {
+    gameState.level++;
+    gameState.speed += 0.3;
+    updateParallax();
+    updateBackgroundByLevel();
+    showNotification(`Уровень ${gameState.level}! Скорость x${gameState.speed.toFixed(1)}`);
+    startGame();
+}
+
+/* clear screen */
+function clearGameScreen() {
+    document.querySelectorAll('.obstacle').forEach(el => el.remove());
+    document.querySelectorAll('.component').forEach(el => el.remove());
+}
+
+/* UI updates */
+function updateUI() {
+    levelEl.textContent = gameState.level;
+    scoreEl.textContent = gameState.score;
+    collectedEl.textContent = `${gameState.collectedCount}/${pcComponents.length}`;
+    speedEl.textContent = `${gameState.speed.toFixed(1)}x`;
+    buildBtn.disabled = gameState.collectedCount !== pcComponents.length;
+    updateProgressBar();
+}
+
+function updateComponentsList() {
+    componentsListEl.innerHTML = '';
+    pcComponents.forEach(c => {
+        const el = document.createElement('div');
+        el.className = `component-item ${c.color} ${gameState.components[c.id] ? 'collected' : 'missing'}`;
+        el.textContent = c.shortName;
+        componentsListEl.appendChild(el);
+    });
+}
+
+function initializeBuildModal() {
+    pcBuildEl.innerHTML = '';
+    pcComponents.forEach(c => {
+        const slot = document.createElement('div');
+        slot.className = 'pc-slot missing';
+        slot.innerHTML = `<div style="font-size:2rem">❌</div><div style="margin-top:8px">${c.name}</div>`;
+        pcBuildEl.appendChild(slot);
+    });
+}
+
+function getComponentName(id) {
+    const comp = pcComponents.find(c => c.id === id);
+    return comp ? comp.name : id;
+}
+
+/* notification */
+let notifTimer = null;
+function showNotification(msg) {
+    notification.textContent = msg;
+    notification.classList.add('show');
+    clearTimeout(notifTimer);
+    notifTimer = setTimeout(()=> notification.classList.remove('show'), 2400);
+}
+
+/* flash */
+function flashEffect(color = 'rgba(76,175,80,0.12)') {
+    const flash = document.createElement('div');
+    flash.className = 'absorb-particle';
+    flash.style.left = '50%';
+    flash.style.top = '50%';
+    flash.style.marginLeft = '-20px';
+    flash.style.marginTop = '-20px';
+    flash.style.background = color;
+    gameScreen.appendChild(flash);
+    setTimeout(()=> flash.remove(), 600);
+}
+
+/* attract to character + absorb particle + sound */
+function attractToCharacter(componentElement) {
+    if (!componentElement) return;
+    const rect = character.getBoundingClientRect();
+    const compRect = componentElement.getBoundingClientRect();
+    const dx = rect.left - compRect.left + 6;
+    const dy = rect.top - compRect.top + 6;
+
+    // play absorb sound
+    if (absorbSound && gameState.soundEnabled) {
+        try { absorbSound.currentTime = 0; absorbSound.volume = 0.5; absorbSound.play(); } catch(e){}
+    }
+
+    // create absorb particle at component position
+    createAbsorbParticle(compRect.left + compRect.width/2 - gameScreen.getBoundingClientRect().left, compRect.top + compRect.height/2 - gameScreen.getBoundingClientRect().top);
+
+    componentElement.style.transition = 'transform 0.32s cubic-bezier(.2,.9,.2,1), opacity 0.32s ease';
+    componentElement.style.transform = `translate(${dx}px, ${dy}px) scale(.2)`;
+    componentElement.style.opacity = '0';
+
+    setTimeout(() => {
+        if (componentElement.parentNode) componentElement.remove();
+    }, 340);
+}
+
+/* absorb particle generator */
+function createAbsorbParticle(x, y, color = '#00ffe0') {
+    const p = document.createElement('div');
+    p.className = 'absorb-particle';
+    p.style.left = `${x - 20}px`;
+    p.style.top = `${y - 20}px`;
+    p.style.background = `radial-gradient(circle, ${color}, transparent)`;
+    gameScreen.appendChild(p);
+    setTimeout(()=> p.remove(), 600);
+}
+
+/* sparks */
+function createSparks(x, y) {
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        spark.style.left = `${x}px`;
+        spark.style.top = `${y}px`;
+        const tx = (Math.random() - 0.5) * 120;
+        const ty = (Math.random() - 0.5) * 80 - 40;
+        spark.style.setProperty('--tx', `${tx}px`);
+        spark.style.setProperty('--ty', `${ty}px`);
+        document.body.appendChild(spark);
+        setTimeout(()=> spark.remove(), 520);
+    }
+}
+
+/* energy wave */
+function createEnergyWave(x, y) {
+    const wave = document.createElement('div');
+    wave.className = 'energy-wave';
+    wave.style.left = `${x}px`;
+    wave.style.top = `${y}px`;
+    document.body.appendChild(wave);
+    setTimeout(()=> wave.remove(), 620);
+}
+
+/* jump trail (color depends on collectedCount) */
+function createJumpTrail(x, y) {
+    const trail = document.createElement('div');
+    trail.className = 'jump-trail';
+    const colorIndex = Math.min(Math.floor(collectedCount / 5), trailColors.length - 1);
+    const color = trailColors[colorIndex];
+    trail.style.setProperty('--trail-color', color);
+    // place relative to gameScreen
+    const screenRect = gameScreen.getBoundingClientRect();
+    trail.style.left = `${character.offsetLeft}px`;
+    trail.style.top = `${character.offsetTop}px`;
+    gameScreen.appendChild(trail);
+    setTimeout(()=> trail.remove(), 520);
+}
+
+/* sounds */
+function playSound(type) {
+    if (!gameState.soundEnabled) return;
+    try {
+        if (type === 'jump') { sfxJump.currentTime = 0; sfxJump.volume = 0.45; sfxJump.play(); }
+        if (type === 'collect') { sfxCollect.currentTime = 0; sfxCollect.volume = 0.45; sfxCollect.play(); }
+        if (type === 'gameover') { sfxGameOver.currentTime = 0; sfxGameOver.volume = 0.5; sfxGameOver.play(); }
+    } catch(e){}
+}
+
+/* parallax update */
+function updateParallax() {
+    const backDur = Math.max(30 / gameState.speed, 10);
+    const midDur  = Math.max(18 / gameState.speed, 6);
+    const frontDur= Math.max(9  / gameState.speed, 4);
+    layerBack.style.animationDuration = backDur + 's';
+    layerMid.style.animationDuration  = midDur + 's';
+    layerFront.style.animationDuration= frontDur + 's';
+}
+
+/* background by level */
+function updateBackgroundByLevel() {
+    const hue = (200 + (gameState.level * 14)) % 360;
+    document.body.style.background = `linear-gradient(180deg, hsl(${hue},34%,8%), hsl(${(hue+12)%360},30%,12%))`;
+}
+
+/* progress */
+function updateProgressBar() {
+    const percent = (gameState.collectedCount / pcComponents.length) * 100;
+    progressEl.style.width = percent + '%';
+}
+
+/* subtle particles */
+function createParticles(count = 16) {
+    const container = document.getElementById('particles');
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const left = Math.random() * 100;
+        p.style.left = left + '%';
+        p.style.bottom = (Math.random() * 80) + 'px';
+        p.style.animationDelay = (Math.random() * 3) + 's';
+        p.style.opacity = (0.02 + Math.random() * 0.08);
+        container.appendChild(p);
+    }
+}
+
+/* download current page HTML as file */
+function downloadHTML() {
+    // serialize current document to string
+    const doctype = "<!DOCTYPE html>\n";
+    const html = document.documentElement.outerHTML;
+    const full = doctype + html;
+    const blob = new Blob([full], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sampetro_game.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+    }, 1500);
+    // Note: on some mobile browsers long-press the link and choose Save
+}
+
+/* cleanup */
+window.addEventListener('beforeunload', () => { try { bgMusic.pause(); } catch(e){} });
+window.addEventListener('resize', () => updateParallax());
+</script>
+</body>
+</html>

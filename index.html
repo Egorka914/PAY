@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SamPetro — Сборка ПК (Параллакс + Плавные переходы + Эффекты)</title>
+<title>SamPetro — Сборка ПК (Улучшенная версия)</title>
 <style>
     :root{
         --accent:#4CAF50;
@@ -90,6 +90,13 @@
     .character.jumping{animation:smooth-jump 480ms cubic-bezier(.2,.9,.2,1)}
     @keyframes smooth-jump {0%{transform:translateY(0) scale(1)}50%{transform:translateY(-140px) scale(1.02)}100%{transform:translateY(0) scale(1)}}
 
+    .character.squatting{
+        height: 40px;
+        bottom: 20px;
+        transform: scale(1, 0.7);
+        transition: all 0.2s ease;
+    }
+
     /* power glow when collecting */
     .character.powerup{box-shadow:0 0 40px 15px rgba(0,255,217,0.6), 0 0 80px 30px rgba(0,255,255,0.25); background: linear-gradient(180deg,#00ffe0,#007aff); transition: all 0.5s ease-out}
 
@@ -99,6 +106,13 @@
 
     /* obstacles & components */
     .obstacle{position:absolute;bottom:20px;width:38px;height:60px;border-radius:6px;background:linear-gradient(180deg,var(--danger),#c03a38);box-shadow:0 10px 22px rgba(0,0,0,0.5);z-index:18;transition:transform 0.2s ease}
+    
+    /* low obstacle - requires squatting */
+    .obstacle.low{height:30px;bottom:20px;background:linear-gradient(180deg,#f39c12,#e67e22)}
+    
+    /* wall obstacle - moving towards player */
+    .wall{position:absolute;bottom:0;width:40px;height:100%;background:linear-gradient(90deg, rgba(231,76,60,0.9), rgba(192,57,43,0.8));box-shadow:0 0 20px rgba(231,76,60,0.5);z-index:15;border-left:2px solid rgba(255,255,255,0.1)}
+    
     .component{position:absolute;bottom:30px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:white;z-index:18;box-shadow:0 10px 26px rgba(0,0,0,0.5);transition:transform 160ms ease, opacity 200ms}
     .component.cpu{background:linear-gradient(180deg,#9b59b6,#7a3a96)}
     .component.gpu{background:linear-gradient(180deg,#e67e22,#c76a14)}
@@ -155,6 +169,11 @@
 
     .game-screen.fade-out{animation:fadeOut .7s forwards}
     @keyframes fadeOut{from{opacity:1;transform:scale(1)}to{opacity:.15;transform:scale(.98)}}
+    
+    /* mobile controls */
+    .mobile-controls{display:none;position:absolute;bottom:10px;left:0;right:0;justify-content:space-around;padding:10px;z-index:100}
+    @media (max-width:768px){.mobile-controls{display:flex}}
+    .mobile-btn{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:24px;color:white;backdrop-filter:blur(5px);box-shadow:0 5px 15px rgba(0,0,0,0.3)}
 </style>
 </head>
 <body>
@@ -162,8 +181,8 @@
     <header>
         <div class="logo-icon">🔧</div>
         <div>
-            <h1>SamPetro - Сборка ПК</h1>
-            <p>Параллакс, плавные переходы и живые эффекты — бери комплектующие на земле!</p>
+            <h1>SamPetro - Сборка ПК (Улучшенная)</h1>
+            <p>Прыгайте, приседайте и уворачивайтесь от стен! Собирайте комплектующие для ПК!</p>
         </div>
         <div class="high-score">Рекорд: <span id="highScore">0</span></div>
     </header>
@@ -180,15 +199,27 @@
                 <div class="particles" id="particles"></div>
                 <div class="ground"></div>
                 <div class="character" id="character" aria-hidden="true"></div>
+                
+                <!-- Mobile controls -->
+                <div class="mobile-controls">
+                    <div class="mobile-btn" id="mobileJumpBtn">⬆️</div>
+                    <div class="mobile-btn" id="mobileSquatBtn">⬇️</div>
+                </div>
             </div>
 
             <div class="controls" style="margin-top:12px">
                 <button class="btn" id="jumpBtn">Прыжок (ПРОБЕЛ)</button>
+                <button class="btn" id="squatBtn">Присесть (S)</button>
                 <button class="btn" id="startBtn">Начать игру</button>
                 <button class="btn" id="downloadBtn" title="Скачать HTML (сохранить игру)">Download HTML</button>
             </div>
 
-            <div class="instructions" style="margin-top:8px">Управление: <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">ПРОБЕЛ</span> — прыжок, <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">Тап</span> — на моб.</div>
+            <div class="instructions" style="margin-top:8px">
+                Управление: 
+                <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">ПРОБЕЛ</span> — прыжок, 
+                <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">S</span> — присесть,
+                <span style="background:rgba(255,255,255,0.03);padding:6px;border-radius:6px">Тап</span> — на моб.
+            </div>
         </div>
 
         <div class="info-panel" aria-live="polite">
@@ -218,7 +249,13 @@
 <div class="modal" id="startModal" style="display:flex">
     <div class="modal-content">
         <h2>Добро пожаловать в SamPetro!</h2>
-        <p>Прыгайте через препятствия и собирайте комплектующие. Компоненты собираются, когда вы стоите на земле.</p>
+        <p>Новые возможности:</p>
+        <ul style="text-align:left;margin:10px 0;padding-left:20px">
+            <li>Прыжки через высокие препятствия (ПРОБЕЛ)</li>
+            <li>Приседания под низкими препятствиями (S)</li>
+            <li>Уклонение от движущихся стен</li>
+            <li>Собирайте комплектующие для сборки ПК</li>
+        </ul>
         <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
             <button class="btn" id="modalStartBtn">Начать игру</button>
             <button class="btn" id="modalStartNoSound" title="Начать без музыки">Старт (без музыки)</button>
@@ -272,12 +309,15 @@ const gameState = {
     components: { cpu:false, gpu:false, ram:false, psu:false, hdd:false, mb:false },
     collectedCount: 0,
     obstacles: [],
+    walls: [],
     componentsOnScreen: [],
     gameInterval: null,
     obstacleInterval: null,
+    wallInterval: null,
     componentInterval: null,
     highScore: Number(localStorage.getItem('highScore') || 0),
-    soundEnabled: true
+    soundEnabled: true,
+    isSquatting: false
 };
 
 const pcComponents = [
@@ -294,6 +334,7 @@ const gameScreen = document.getElementById('gameScreen');
 const character = document.getElementById('character');
 const startBtn = document.getElementById('startBtn');
 const jumpBtn = document.getElementById('jumpBtn');
+const squatBtn = document.getElementById('squatBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const buildBtn = document.getElementById('buildBtn');
 const startModal = document.getElementById('startModal');
@@ -317,6 +358,8 @@ const speedEl = document.getElementById('speed');
 const progressEl = document.getElementById('progress');
 const pcBuildEl = document.getElementById('pcBuild');
 const buildResultEl = document.getElementById('buildResult');
+const mobileJumpBtn = document.getElementById('mobileJumpBtn');
+const mobileSquatBtn = document.getElementById('mobileSquatBtn');
 
 const layerBack = document.getElementById('layerBack');
 const layerMid  = document.getElementById('layerMid');
@@ -342,7 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modalStartBtn.addEventListener('click', () => { gameState.soundEnabled = true; startGame(); startModal.style.display='none'; });
     modalStartNoSound.addEventListener('click', () => { gameState.soundEnabled = false; startGame(); startModal.style.display='none'; });
     startBtn.addEventListener('click', startGame);
-    jumpBtn.addEventListener('click', () => { if (gameState.isPlaying) jump(); });
+    jumpBtn.addEventListener('click', jump);
+    squatBtn.addEventListener('click', toggleSquat);
     buildBtn.addEventListener('click', showBuildModal);
     rebuildBtn.addEventListener('click', restartGame);
     continueBtn.addEventListener('click', () => { buildModal.style.display='none'; nextLevel(); });
@@ -351,12 +395,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     downloadBtn.addEventListener('click', downloadHTML);
 
+    // Mobile controls
+    mobileJumpBtn.addEventListener('touchstart', jump);
+    mobileSquatBtn.addEventListener('touchstart', toggleSquat);
+    mobileSquatBtn.addEventListener('touchend', toggleSquat);
+
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space') {
             e.preventDefault();
             if (gameState.isPlaying) jump();
         }
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+            e.preventDefault();
+            if (gameState.isPlaying && !gameState.isSquatting) toggleSquat();
+        }
         if (e.key === 'n') nextLevel();
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+            if (gameState.isPlaying && gameState.isSquatting) toggleSquat();
+        }
     });
 
     gameScreen.addEventListener('touchstart', () => { if (gameState.isPlaying) jump(); });
@@ -371,6 +430,8 @@ function startGame() {
     buildModal.style.display='none';
 
     gameState.isPlaying = true;
+    gameState.isSquatting = false;
+    character.classList.remove('squatting');
     startBtn.disabled = true;
 
     gameState.score = 0;
@@ -378,12 +439,14 @@ function startGame() {
     collectedCount = 0;
     gameState.components = { cpu:false, gpu:false, ram:false, psu:false, hdd:false, mb:false };
     gameState.obstacles = [];
+    gameState.walls = [];
     gameState.componentsOnScreen = [];
 
     clearGameScreen();
 
     gameState.gameInterval = setInterval(updateGame, 20);
     gameState.obstacleInterval = setInterval(createObstacle, Math.max(900, 1800 / gameState.speed));
+    gameState.wallInterval = setInterval(createWall, Math.max(2000, 4000 / gameState.speed));
     gameState.componentInterval = setInterval(createComponent, Math.max(1100, 3000 / gameState.speed));
 
     updateUI();
@@ -402,7 +465,7 @@ function startGame() {
 
 /* jump */
 function jump() {
-    if (!character.classList.contains('jumping')) {
+    if (!character.classList.contains('jumping') && !gameState.isSquatting) {
         character.classList.add('jumping');
         playSound('jump');
         createJumpTrail(character.offsetLeft + 0, character.offsetTop + 0);
@@ -410,15 +473,43 @@ function jump() {
     }
 }
 
-/* create obstacle */
+/* squat */
+function toggleSquat() {
+    if (!gameState.isPlaying) return;
+    
+    if (!gameState.isSquatting && !character.classList.contains('jumping')) {
+        gameState.isSquatting = true;
+        character.classList.add('squatting');
+    } else {
+        gameState.isSquatting = false;
+        character.classList.remove('squatting');
+    }
+}
+
+/* create obstacle - random type */
 function createObstacle() {
     if (!gameState.isPlaying) return;
+    
     const obstacle = document.createElement('div');
-    obstacle.className = 'obstacle';
+    const obstacleType = Math.random() > 0.5 ? 'normal' : 'low';
+    obstacle.className = `obstacle ${obstacleType}`;
+    
     const leftPos = gameScreen.clientWidth + 20 + Math.random()*120;
     obstacle.style.left = leftPos + 'px';
     gameScreen.appendChild(obstacle);
-    gameState.obstacles.push({ element:obstacle, x:leftPos, passed:false });
+    gameState.obstacles.push({ element:obstacle, x:leftPos, passed:false, type: obstacleType });
+}
+
+/* create moving wall */
+function createWall() {
+    if (!gameState.isPlaying) return;
+    
+    const wall = document.createElement('div');
+    wall.className = 'wall';
+    const leftPos = gameScreen.clientWidth;
+    wall.style.left = leftPos + 'px';
+    gameScreen.appendChild(wall);
+    gameState.walls.push({ element:wall, x:leftPos, passed:false });
 }
 
 /* create component (avoid spawning right at obstacle) */
@@ -468,21 +559,65 @@ function updateGame() {
 
         const charX = character.offsetLeft;
         const obsLeft = obs.x;
+        
+        // Check collision based on obstacle type
         if (!obs.passed && obsLeft < charX + 40 && obsLeft > charX - 10) {
             const isJump = character.classList.contains('jumping');
-            if (!isJump) {
-                // collision -> game over
-                gameOver();
-                return;
-            } else {
-                obs.passed = true;
-                gameState.score += 10;
-                updateUI();
+            
+            if (obs.type === 'normal') {
+                // Normal obstacle - requires jumping
+                if (!isJump) {
+                    // collision -> game over
+                    gameOver();
+                    return;
+                } else {
+                    obs.passed = true;
+                    gameState.score += 10;
+                    updateUI();
+                }
+            } else if (obs.type === 'low') {
+                // Low obstacle - requires squatting
+                if (!gameState.isSquatting) {
+                    // collision -> game over
+                    gameOver();
+                    return;
+                } else {
+                    obs.passed = true;
+                    gameState.score += 15;
+                    updateUI();
+                }
             }
         }
+        
         if (obs.x < -120) {
             if (obs.element.parentNode) obs.element.remove();
             gameState.obstacles.splice(i,1);
+        }
+    }
+
+    // walls movement
+    for (let i = gameState.walls.length - 1; i >= 0; i--) {
+        const wall = gameState.walls[i];
+        wall.x -= 8 * gameState.speed; // Walls move faster
+        wall.element.style.left = wall.x + 'px';
+
+        const charX = character.offsetLeft;
+        const wallLeft = wall.x;
+        
+        // Check collision with wall
+        if (!wall.passed && wallLeft < charX + 54 && wallLeft > charX - 40) {
+            // Wall collision - game over
+            gameOver();
+            return;
+        } else if (!wall.passed && wallLeft < charX - 40) {
+            wall.passed = true;
+            gameState.score += 20;
+            updateUI();
+        }
+        
+        if (wall.x < -120) {
+            if (wall.element.parentNode) wall.element.remove();
+            gameState.walls.splice(i,1);
         }
     }
 
@@ -543,8 +678,11 @@ function updateGame() {
 /* game over */
 function gameOver() {
     gameState.isPlaying = false;
+    gameState.isSquatting = false;
+    character.classList.remove('squatting');
     clearInterval(gameState.gameInterval);
     clearInterval(gameState.obstacleInterval);
+    clearInterval(gameState.wallInterval);
     clearInterval(gameState.componentInterval);
     startBtn.disabled = false;
 
@@ -568,8 +706,11 @@ function gameOver() {
 function showBuildModal() {
     if (!gameState.isPlaying) return;
     gameState.isPlaying = false;
+    gameState.isSquatting = false;
+    character.classList.remove('squatting');
     clearInterval(gameState.gameInterval);
     clearInterval(gameState.obstacleInterval);
+    clearInterval(gameState.wallInterval);
     clearInterval(gameState.componentInterval);
     buildModal.style.display = 'flex';
     updateBuildModal();
@@ -612,6 +753,7 @@ function nextLevel() {
 /* clear screen */
 function clearGameScreen() {
     document.querySelectorAll('.obstacle').forEach(el => el.remove());
+    document.querySelectorAll('.wall').forEach(el => el.remove());
     document.querySelectorAll('.component').forEach(el => el.remove());
 }
 

@@ -211,7 +211,6 @@
                 <button class="btn" id="jumpBtn">Прыжок (ПРОБЕЛ)</button>
                 <button class="btn" id="squatBtn">Присесть (S)</button>
                 <button class="btn" id="startBtn">Начать игру</button>
-                <button class="btn" id="downloadBtn" title="Скачать HTML (сохранить игру)">Download HTML</button>
             </div>
 
             <div class="instructions" style="margin-top:8px">
@@ -335,7 +334,6 @@ const character = document.getElementById('character');
 const startBtn = document.getElementById('startBtn');
 const jumpBtn = document.getElementById('jumpBtn');
 const squatBtn = document.getElementById('squatBtn');
-const downloadBtn = document.getElementById('downloadBtn');
 const buildBtn = document.getElementById('buildBtn');
 const startModal = document.getElementById('startModal');
 const buildModal = document.getElementById('buildModal');
@@ -392,8 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
     continueBtn.addEventListener('click', () => { buildModal.style.display='none'; nextLevel(); });
     restartBtn.addEventListener('click', () => { gameOverModal.style.display='none'; startGame(); });
     toMenuBtn.addEventListener('click', () => { gameOverModal.style.display='none'; startModal.style.display='flex'; });
-
-    downloadBtn.addEventListener('click', downloadHTML);
 
     // Mobile controls
     mobileJumpBtn.addEventListener('touchstart', jump);
@@ -938,26 +934,6 @@ function createParticles(count = 16) {
         p.style.opacity = (0.02 + Math.random() * 0.08);
         container.appendChild(p);
     }
-}
-
-/* download current page HTML as file */
-function downloadHTML() {
-    // serialize current document to string
-    const doctype = "<!DOCTYPE html>\n";
-    const html = document.documentElement.outerHTML;
-    const full = doctype + html;
-    const blob = new Blob([full], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sampetro_game.html';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-    }, 1500);
-    // Note: on some mobile browsers long-press the link and choose Save
 }
 
 /* cleanup */
